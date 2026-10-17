@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B2A4A">
+<title>Tim Roastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1B2A4A;--copper:#A0522D;--ink:#16213A;--muted:#5A6275;--line:#DCE0E7;--bg:#EEF0F3;--ok:#1F6B45;--warn:#8A5A00;--warnbg:#FFF6E5;--bad:#A3261B}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+.wrap{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+header{background:var(--navy);color:#fff;padding:18px 18px 16px;display:flex;flex-direction:column;gap:8px}
+.brand{font-size:11px;letter-spacing:2.5px;font-weight:700;color:#F0C9A8}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hi{font-size:22px;font-weight:700}
+.sub{font-size:13px;color:#D5DAE5}
+.chip{display:flex;align-items:center;gap:7px;font-size:12px;color:#D5DAE5}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:#8C97AE}
+.chip.in .dot{background:#7FD3A3}.chip.out .dot{background:#F28B7D}
+main{flex:1;padding:16px;display:flex;flex-direction:column;gap:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+h2{margin:0;font-size:13px;letter-spacing:1.5px;color:var(--navy)}
+h3{margin:0;font-size:18px}
+.muted{color:var(--muted);font-size:14px;line-height:1.45}
+.small{font-size:12px}
+.note{font-size:13px;color:var(--warn);background:var(--warnbg);border-radius:8px;padding:10px 12px;line-height:1.4}
+.okt{color:var(--ok)}.badt{color:var(--bad)}.warnt{color:var(--warn)}
+.btn{border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:600;min-height:52px;width:100%;background:var(--navy);color:#fff}
+.btn.copper{background:var(--copper)}
+.btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--navy)}
+.btn.red{background:#fff;color:var(--bad);border:1.5px solid var(--bad)}
+.btn:disabled{opacity:.55;cursor:default}
+.timer{display:flex;align-items:baseline;justify-content:center;gap:8px}
+.timer b{font-family:'IBM Plex Mono',monospace;font-size:44px;font-weight:600;color:var(--navy)}
+.bar{height:8px;background:#E4E7ED;border-radius:4px;overflow:hidden}.bar i{display:block;height:8px;background:var(--copper)}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:92px;color:var(--ink);font-size:13px;font-weight:600;text-align:center}
+.list .it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid #EEF0F3}
+.list .it:first-child{border-top:none}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:13px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stat .l{font-size:12px;color:var(--muted)}.stat .v{font-size:18px;font-weight:700}
+label{font-size:13px;font-weight:600;display:block;margin-bottom:6px}
+.f{padding:12px;border:1px solid #C5CBD6;border-radius:10px;width:100%;background:#fff;min-height:46px}
+textarea.f{resize:none}
+.back{background:transparent;border:1px solid #8C97AE;color:#fff;border-radius:8px;padding:8px 12px;font-size:13px;min-height:40px}
+.link{background:none;border:none;color:var(--copper);font-size:13px;padding:8px 0;text-decoration:underline}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;max-width:90%;z-index:9;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.toast.err{background:var(--bad)}
+.badge{background:var(--copper);color:#fff;border-radius:10px;padding:1px 8px;font-size:12px;margin-left:6px}
+.center{text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><main><p class="muted center">Memuat…</p></main></div>
+<script>
+// ============================================================
+// TIM ROASTERY — frontend v1.0
+// Ganti API_URL dengan URL Web App Apps Script (yang berakhiran /exec)
+// ============================================================
+const API_URL = "PASTE_URL_WEB_APP_DI_SINI";
+
+const S = { me: null, st: null, view: "home", pos: null, posErr: "", offset: 0, staff: [], pend: null, busy: false };
+const ICON = {
+  cup: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0522D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="2" y1="2" x2="22" y2="22"/></svg>',
+  clock: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0522D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
+  cal: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0522D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+};
+
+// ── UTIL ──────────────────────────────────────────────────────
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = id => document.getElementById(id);
+const now = () => Date.now() + S.offset;
+const pad = n => String(n).padStart(2, "0");
+const mmss = ms => { ms = Math.max(0, ms); return pad(Math.floor(ms / 60000)) + ":" + pad(Math.floor(ms / 1000) % 60); };
+const hm = ts => { const d = new Date(ts); return pad(d.getHours()) + "." + pad(d.getMinutes()); };
+const jamMenit = m => Math.floor(m / 60) + " j " + pad(m % 60) + " m";
+function store(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function toast(msg, err) {
+  const t = document.createElement("div"); t.className = "toast" + (err ? " err" : ""); t.textContent = msg;
+  t.setAttribute("role", "status"); document.body.appendChild(t); setTimeout(() => t.remove(), err ? 5000 : 2800);
+}
+const STATUS = { "MENUNGGU": ["Menunggu", "warnt"], "DISETUJUI": ["Disetujui", "okt"], "DITOLAK": ["Ditolak", "badt"],
+                 "BATAL OTOMATIS": ["Batal otomatis", ""], "DIBATALKAN": ["Dibatalkan", ""] };
+const JENIS = { "TIDAK ISTIRAHAT": "Tidak Istirahat", "LEMBUR": "Lembur", "CUTI": "Cuti" };
+
+// ── API (JSONP) ───────────────────────────────────────────────
+let cbN = 0;
+function api(action, params) {
+  return new Promise((resolve, reject) => {
+    const cb = "__cb" + Date.now() + (cbN++);
+    const q = Object.assign({ action, callback: cb }, S.me ? { nama: S.me.nama, pin: S.me.pin } : {}, params || {});
+    const url = API_URL + "?" + Object.keys(q).map(k => encodeURIComponent(k) + "=" + encodeURIComponent(q[k])).join("&");
+    const el = document.createElement("script");
+    const done = () => { delete window[cb]; el.remove(); clearTimeout(to); };
+    const to = setTimeout(() => { done(); reject(new Error("Koneksi lambat. Coba lagi.")); }, 25000);
+    window[cb] = res => {
+      done();
+      if (res.serverNow) S.offset = res.serverNow - Date.now();
+      res.ok ? resolve(res.data) : reject(new Error(res.error || "Terjadi kesalahan."));
+    };
+    el.onerror = () => { done(); reject(new Error("Tidak bisa terhubung ke server.")); };
+    el.src = url; document.body.appendChild(el);
+  });
+}
+
+// ── GPS ───────────────────────────────────────────────────────
+function getPos() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error("HP tidak mendukung GPS."));
+    navigator.geolocation.getCurrentPosition(
+      p => { S.pos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy, t: Date.now() }; S.posErr = ""; resolve(S.pos); },
+      e => { S.posErr = e.code === 1 ? "Izin lokasi ditolak. Aktifkan lokasi untuk browser ini." : "Lokasi tidak terbaca. Coba lagi."; reject(new Error(S.posErr)); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  });
+}
+function jarak(a, b) {
+  const R = 6371000, r = x => x * Math.PI / 180, dLat = r(b.lat - a.lat), dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(2 * R * Math.asin(Math.sqrt(h)));
+}
+function lokasiInfo() {
+  if (S.posErr) return { cls: "out", text: S.posErr };
+  if (!S.pos || !S.st) return { cls: "", text: "Mengecek lokasi…" };
+  let best = null;
+  (S.st.lokasi || []).forEach(l => { const d = jarak(S.pos, l); if (!best || d - l.radius < best.d - best.l.radius) best = { l, d }; });
+  if (!best) return { cls: "", text: "Lokasi belum diatur" };
+  return best.d <= best.l.radius
+    ? { cls: "in", text: "Di area " + best.l.nama + " · " + best.d + " m" }
+    : { cls: "out", text: "Di luar area · " + best.d + " m dari " + best.l.nama };
+}
+
+// ── AKSI ──────────────────────────────────────────────────────
+// Form tidak dirender ulang saat mengirim/gagal, supaya isian tidak hilang.
+const isForm = () => ["ti", "lembur", "cuti"].indexOf(S.view) >= 0;
+function formBtn(busy) {
+  const b = document.querySelector("form .btn");
+  if (b) { b.disabled = busy; b.textContent = busy ? "Mengirim…" : "Kirim Pengajuan"; }
+}
+async function run(fn, okMsg) {
+  if (S.busy) return; S.busy = true;
+  isForm() ? formBtn(true) : render();
+  try { const r = await fn(); if (r && r.profil) S.st = r; if (okMsg) toast(okMsg); }
+  catch (e) { toast(e.message, true); }
+  finally { S.busy = false; isForm() ? formBtn(false) : render(); }
+}
+// Pembaruan latar belakang: beranda dirender ulang, form cukup perbarui indikator lokasi.
+function soft() {
+  if (!isForm()) return render();
+  const c = document.querySelector(".chip"), l = lokasiInfo();
+  if (c) { c.className = "chip " + l.cls; c.lastElementChild.textContent = l.text; }
+}
+const geoAction = (action, okMsg) => run(async () => { const p = await getPos(); return api(action, { lat: p.lat, lng: p.lng, acc: Math.round(p.acc) }); }, okMsg);
+
+async function refresh(silent) {
+  try { S.st = await api("status"); soft(); }
+  catch (e) { if (/PIN salah/.test(e.message)) return logout(); if (!silent) toast(e.message, true); }
+}
+function go(v) { S.view = v; window.scrollTo(0, 0); render(); if (v === "approve") loadPending(); }
+async function loadPending() {
+  S.pend = null; render();
+  try { S.pend = (await api("pending")).list; } catch (e) { toast(e.message, true); S.pend = []; }
+  render();
+}
+function logout() { store("tr_me", null); S.me = null; S.st = null; S.view = "home"; boot(); }
+
+// ── RENDER ────────────────────────────────────────────────────
+function render() {
+  const app = $("app");
+  if (!S.me) return app.innerHTML = loginView();
+  if (!S.st) return app.innerHTML = '<main><p class="muted center">Memuat…</p></main>';
+  const p = S.st.profil, loc = lokasiInfo();
+  const body = { home: homeView, ti: tiView, lembur: lemburView, cuti: cutiView, approve: approveView }[S.view]();
+  app.innerHTML = `
+  <header>
+    <div class="row"><span class="brand">TIM ROASTERY</span><span class="sub">${esc(S.st.tanggalLabel)}</span></div>
+    <div class="row" style="align-items:flex-end">
+      <div><div class="hi">Halo, ${esc(p.nama.split(" ")[0][0] + p.nama.split(" ")[0].slice(1).toLowerCase())}</div>
+      <div class="sub">${esc(p.jabatan)} · ${esc(p.masuk)}–${esc(p.pulang)}</div></div>
+      ${S.view !== "home" ? '<button class="back" onclick="go(\'home\')">Kembali</button>' : ""}
+    </div>
+    <div class="chip ${loc.cls}"><span class="dot"></span><span>${esc(loc.text)}</span></div>
+  </header>
+  <main>${body}</main>`;
+  tick();
+}
+
+function loginView() {
+  const opts = S.staff.map(s => `<option value="${esc(s.nama)}">${esc(s.nama)}</option>`).join("");
+  return `
+  <header><span class="brand">TIM ROASTERY</span><div class="hi">Masuk</div><div class="sub">Istirahat · Lembur · Cuti</div></header>
+  <main><form class="card" onsubmit="event.preventDefault();doLogin()">
+    <div><label for="ln">Nama</label><select id="ln" class="f">${opts || "<option>Memuat…</option>"}</select></div>
+    <div><label for="lp">PIN</label><input id="lp" class="f" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8"></div>
+    <button class="btn" ${S.busy ? "disabled" : ""}>${S.busy ? "Memeriksa…" : "Masuk"}</button>
+  </form></main>`;
+}
+async function doLogin() {
+  const nama = $("ln").value, pin = $("lp").value.trim();
+  if (!pin) return toast("Isi PIN dulu.", true);
+  S.me = { nama, pin }; S.busy = true; render();
+  try { await api("login"); store("tr_me", S.me); S.busy = false; await refresh(); getPos().then(render, render); }
+  catch (e) { S.me = null; S.busy = false; render(); toast(e.message, true); }
+}
+
+function homeView() {
+  const st = S.st, p = st.profil, out = [];
+  if (st.libur) out.push(`<div class="note">${{ OFF: "Hari ini jadwal libur kamu.", AL: "Hari ini kamu cuti.", S: "Hari ini tercatat sakit.", I: "Hari ini tercatat ijin." }[st.kodeHari] || "Hari ini kamu tidak dijadwalkan masuk."}</div>`);
+  if (p.istirahat) out.push(istirahatCard());
+  if (st.lembur) out.push(lemburCard());
+  if (p.istirahat || p.peran !== "STAF") out.push(sedangCard());
+  out.push(`<div class="tiles">
+    ${p.istirahat ? `<button class="tile" onclick="go('ti')">${ICON.cup}<span>Tidak Istirahat</span></button>` : ""}
+    <button class="tile" onclick="go('lembur')">${ICON.clock}<span>Lembur</span></button>
+    <button class="tile" onclick="go('cuti')">${ICON.cal}<span>Cuti</span></button>
+  </div>`);
+  if (p.peran !== "STAF") out.push(`<button class="btn ghost" onclick="go('approve')">Persetujuan${st.jumlahMenunggu ? `<span class="badge">${st.jumlahMenunggu}</span>` : ""}</button>`);
+  out.push(pengajuanCard());
+  const b = st.bulanIni;
+  out.push(`<section class="card"><div class="row"><h2>PERIODE INI</h2><span class="small muted">${esc(st.periodeLabel)}</span></div><div class="grid2">
+    ${p.istirahat ? `<div class="stat"><div class="l">Telat istirahat</div><div class="v">${b.telat}x</div></div>
+    <div class="stat"><div class="l">Tidak istirahat disetujui</div><div class="v">${b.tidakIstirahat} hari</div></div>` : ""}
+    <div class="stat"><div class="l">Lembur dibayar</div><div class="v">${jamMenit(b.lemburMenit)}</div></div>
+    <div class="stat"><div class="l">Sisa cuti</div><div class="v">${b.sisaCuti} hari</div></div>
+  </div></section>`);
+  out.push(`<div class="center"><button class="link" onclick="logout()">Keluar</button></div>`);
+  return out.join("");
+}
+
+function istirahatCard() {
+  const st = S.st, b = st.istirahat, ti = st.tidakIstirahat;
+  let badge = ["Belum", ""], inner = "";
+  if (b.state === "idle") {
+    if (ti && ti.status === "DISETUJUI") inner += `<div class="okt" style="font-size:14px">Tidak istirahat hari ini sudah disetujui.</div>`;
+    else if (ti) inner += `<div class="muted">Pengajuan tidak istirahat hari ini: <b class="warnt">menunggu persetujuan</b>.</div>`;
+    else inner += `<div class="muted">Tekan saat kamu benar-benar berhenti kerja. Jatah ${st.cfg.durasi} menit.</div>`;
+    if (ti) inner += `<div class="note">Kalau kamu mulai istirahat, pengajuan tidak istirahat hari ini otomatis batal.</div>`;
+    inner += `<button class="btn" ${S.busy ? "disabled" : ""} onclick="geoAction('mulaiIstirahat','Istirahat dimulai')">${S.busy ? "Mengecek lokasi…" : "Mulai Istirahat"}</button>`;
+  } else if (b.state === "running") {
+    badge = ["Sedang istirahat", "warnt"];
+    inner += `<div class="timer"><b data-tick="brk">00:00</b><span class="muted">/ ${pad(st.cfg.durasi)}:00</span></div>
+      <div class="bar"><i data-tick="brkbar" style="width:0%"></i></div>
+      <div class="muted center small">Mulai ${esc(b.mulai)} di ${esc(b.lokasi)} · kembali sebelum <b>${hm(b.batasTs)}</b></div>
+      <button class="btn copper" ${S.busy ? "disabled" : ""} onclick="geoAction('selesaiIstirahat','Istirahat selesai')">${S.busy ? "Mengecek lokasi…" : "Selesai Istirahat"}</button>`;
+  } else {
+    badge = b.telat ? ["Telat", "badt"] : ["Selesai", "okt"];
+    inner += `<div style="font-weight:600">Istirahat ${esc(b.mulai)} – ${esc(b.selesai)} · ${b.durasi} menit</div>
+      <div class="${b.telat ? "badt" : "okt"}" style="font-size:13px">${b.telat ? "Tercatat telat istirahat." : "Tepat waktu."}</div>`;
+  }
+  return `<section class="card"><div class="row"><h2>ISTIRAHAT HARI INI</h2><span class="small ${badge[1]}" style="font-weight:600">${badge[0]}</span></div>${inner}</section>`;
+}
+
+function lemburCard() {
+  const l = S.st.lembur;
+  let inner;
+  if (l.selesaiDibayar != null) inner = `<div class="okt" style="font-weight:600">Lembur selesai · dibayar ${jamMenit(l.selesaiDibayar)}</div>`;
+  else if (l.jalan) inner = `<div class="timer"><b data-tick="ot" data-start="${l.jalan.startTs}">00:00</b></div>
+      <button class="btn copper" ${S.busy ? "disabled" : ""} onclick="geoAction('selesaiLembur','Lembur selesai')">Selesai Lembur</button>`;
+  else inner = `<div class="muted small">Tombol aktif mulai 15 menit sebelum ${esc(l.mulai)}. Waktu dihitung dari ${esc(l.mulai)}.</div>
+      <button class="btn" ${S.busy ? "disabled" : ""} onclick="geoAction('mulaiLembur','Lembur dimulai')">Mulai Lembur</button>`;
+  return `<section class="card"><div class="row"><h2>LEMBUR HARI INI</h2><span class="small muted">${esc(l.mulai)} – ${esc(l.selesai)}</span></div>
+    <div class="muted small">Yang dibayar jam aktual, maksimal sesuai yang disetujui.</div>${inner}</section>`;
+}
+
+function sedangCard() {
+  const st = S.st;
+  const rows = st.sedangIstirahat.map(x => `<div class="it">
+      <span style="font-weight:${x.saya ? 700 : 500}">${x.saya ? "Kamu" : esc(x.nama)}</span>
+      <span class="mono ${x.lewat ? "badt" : "muted"}" style="font-weight:600">${x.lewat ? "lewat waktu · " : "sejak " + esc(x.mulai) + " · "}<span data-tick="since" data-start="${x.startTs}"></span></span>
+    </div>`).join("") || `<div class="muted small">Tidak ada yang sedang istirahat.</div>`;
+  const nm = a => a.map(n => esc(n.split(" ")[0][0] + n.split(" ")[0].slice(1).toLowerCase())).join(", ") || "—";
+  return `<section class="card" style="gap:6px"><div class="row"><h2>SEDANG ISTIRAHAT</h2><span class="small muted">${st.sedangIstirahat.length} dari ${st.jumlahWajib} orang</span></div>
+    <div class="list">${rows}</div>
+    <div class="muted small" style="margin-top:4px">Sudah: ${nm(st.sudahIstirahat)} · Belum: ${nm(st.belumIstirahat)}</div></section>`;
+}
+
+function pengajuanCard() {
+  const list = S.st.pengajuan;
+  const rows = list.map(r => {
+    const s = STATUS[r.status] || [r.status, ""];
+    return `<div class="it"><div style="min-width:0"><div style="font-weight:600;font-size:14px">${esc(JENIS[r.jenis] || r.jenis)}</div>
+      <div class="muted small">${esc(r.detail)}${r.catatan ? " · " + esc(r.catatan) : ""}</div></div>
+      <div style="text-align:right;white-space:nowrap"><div class="small ${s[1]}" style="font-weight:600">${s[0]}</div>
+      ${r.status === "MENUNGGU" ? `<button class="link" onclick="batal('${esc(r.id)}')">Batalkan</button>` : ""}</div></div>`;
+  }).join("") || `<div class="muted small">Belum ada pengajuan.</div>`;
+  return `<section class="card" style="gap:6px"><h2>PENGAJUAN SAYA</h2><div class="list">${rows}</div></section>`;
+}
+function batal(id) { if (confirm("Batalkan pengajuan ini?")) run(() => api("batalkan", { id }), "Pengajuan dibatalkan"); }
+
+// ── FORM ──────────────────────────────────────────────────────
+function tiView() {
+  const st = S.st;
+  return `<form class="card" onsubmit="event.preventDefault();kirimTI()">
+    <h3>Ajukan Tidak Istirahat</h3>
+    <div class="muted">Hanya untuk <b>hari ini</b>, paling lambat <b>${esc(st.deadlineTI)}</b>. Dibayar setelah disetujui. Otomatis batal kalau kamu menekan Mulai Istirahat.</div>
+    <div><label for="ta">Alasan</label><select id="ta" class="f">
+      <option>Roasting batch sedang berjalan</option><option>Packing / pengiriman mendesak</option>
+      <option>Kekurangan orang di shift</option><option>Lainnya</option></select></div>
+    <div><label for="tk">Keterangan</label><textarea id="tk" class="f" rows="3" placeholder="Contoh: 3 batch Kintamani untuk order wholesale"></textarea></div>
+    <div><label for="tb">Sudah bicara dengan atasan?</label><select id="tb" class="f">
+      <option>Ya, dengan Supervisor</option><option>Ya, dengan Manager</option><option>Belum</option></select></div>
+    <button class="btn" ${S.busy ? "disabled" : ""}>${S.busy ? "Mengirim…" : "Kirim Pengajuan"}</button>
+  </form>`;
+}
+function kirimTI() {
+  const q = { alasan: $("ta").value, ket: $("tk").value, atasan: $("tb").value };
+  run(async () => { const r = await api("ajukanTI", q); S.view = "home"; return r; }, "Pengajuan terkirim");
+}
+function todayStr(off) { const d = new Date(now() + (off || 0) * 864e5); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function lemburView() {
+  const p = S.st.profil, [h, m] = p.pulang.split(":").map(Number);
+  return `<form class="card" onsubmit="event.preventDefault();kirimLembur()">
+    <h3>Ajukan Lembur</h3>
+    <div class="muted">Ajukan dulu. Setelah disetujui, tekan <b>Mulai</b> dan <b>Selesai Lembur</b> di lokasi kerja. Yang dibayar jam aktual, maksimal sesuai yang disetujui.</div>
+    <div><label for="lt">Tanggal</label><input id="lt" class="f" type="date" min="${todayStr()}" value="${todayStr()}"></div>
+    <div class="grid2"><div><label for="lm">Mulai</label><input id="lm" class="f" type="time" value="${esc(p.pulang)}"></div>
+      <div><label for="ls">Perkiraan selesai</label><input id="ls" class="f" type="time" value="${pad((h + 2) % 24)}:${pad(m)}"></div></div>
+    <div><label for="lk">Pekerjaan</label><textarea id="lk" class="f" rows="3" placeholder="Contoh: roasting order hotel 20 kg"></textarea></div>
+    <button class="btn" ${S.busy ? "disabled" : ""}>${S.busy ? "Mengirim…" : "Kirim Pengajuan"}</button>
+  </form>`;
+}
+function kirimLembur() {
+  const q = { tanggal: $("lt").value, mulai: $("lm").value, selesai: $("ls").value, ket: $("lk").value };
+  run(async () => { const r = await api("ajukanLembur", q); S.view = "home"; return r; }, "Pengajuan lembur terkirim");
+}
+const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+function hitungCuti() {
+  const a = $("cd").value, b = $("cs").value || a, out = $("cn");
+  if (!a || !out) return;
+  let n = 0; const lib = S.st.profil.libur;
+  for (let d = new Date(a + "T12:00"); d <= new Date(b + "T12:00"); d.setDate(d.getDate() + 1)) if (lib.indexOf(HARI[d.getDay()]) < 0) n++;
+  const sisa = S.st.bulanIni.sisaCuti - (S.st.bulanIni.cutiMenunggu || 0);
+  out.innerHTML = `${n} hari kerja · sisa setelah ini: <b class="${sisa - n < 0 ? "badt" : ""}">${sisa - n} hari</b>`;
+}
+function cutiView() {
+  const b = S.st.bulanIni, sisa = b.sisaCuti - (b.cutiMenunggu || 0);
+  setTimeout(hitungCuti, 0);
+  return `<form class="card" onsubmit="event.preventDefault();kirimCuti()">
+    <h3>Ajukan Cuti</h3>
+    <div class="row" style="background:var(--bg);border-radius:10px;padding:12px 14px"><span class="muted">Sisa cuti kamu</span><span style="font-size:20px;font-weight:700;color:var(--navy)">${sisa} hari</span></div>
+    ${b.cutiMenunggu ? `<div class="muted small">Sudah dikurangi ${b.cutiMenunggu} hari cuti yang masih menunggu persetujuan.</div>` : ""}
+    <div class="grid2"><div><label for="cd">Dari</label><input id="cd" class="f" type="date" min="${todayStr()}" value="${todayStr(1)}" onchange="hitungCuti()"></div>
+      <div><label for="cs">Sampai</label><input id="cs" class="f" type="date" min="${todayStr()}" value="${todayStr(1)}" onchange="hitungCuti()"></div></div>
+    <div id="cn" class="muted"></div>
+    <div><label for="ca">Alasan</label><textarea id="ca" class="f" rows="3" placeholder="Contoh: acara keluarga"></textarea></div>
+    <button class="btn" ${S.busy ? "disabled" : ""}>${S.busy ? "Mengirim…" : "Kirim Pengajuan"}</button>
+  </form>`;
+}
+function kirimCuti() {
+  const q = { dari: $("cd").value, sampai: $("cs").value, alasan: $("ca").value };
+  run(async () => { const r = await api("ajukanCuti", q); S.view = "home"; return r; }, "Pengajuan cuti terkirim");
+}
+
+// ── PERSETUJUAN ───────────────────────────────────────────────
+function approveView() {
+  if (!S.pend) return `<p class="muted center">Memuat pengajuan…</p>`;
+  if (!S.pend.length) return `<section class="card"><h3>Persetujuan</h3><div class="muted">Tidak ada pengajuan yang menunggu.</div></section>`;
+  return S.pend.map(it => `<article class="card" style="gap:10px">
+    <div class="row" style="align-items:flex-start"><div><div class="small" style="font-weight:700;letter-spacing:1px;color:var(--copper)">${esc((JENIS[it.jenis] || it.jenis).toUpperCase())}</div>
+      <div style="font-size:16px;font-weight:700">${esc(it.nama)}</div></div><span class="small muted">${esc(it.dikirim)}</span></div>
+    <div style="font-size:14px;line-height:1.45">${esc(it.detail)}${it.keterangan ? `<br><span class="muted">${esc(it.keterangan)}</span>` : ""}</div>
+    ${it.flag ? `<div class="note">${esc(it.flag)}</div>` : ""}
+    <input class="f" id="cat-${esc(it.id)}" placeholder="Catatan (opsional)" aria-label="Catatan untuk ${esc(it.nama)}">
+    <div class="grid2"><button class="btn red" ${S.busy ? "disabled" : ""} onclick="putus('${esc(it.id)}','DITOLAK')">Tolak</button>
+      <button class="btn" ${S.busy ? "disabled" : ""} onclick="putus('${esc(it.id)}','DISETUJUI')">Setujui</button></div>
+  </article>`).join("");
+}
+async function putus(id, k) {
+  if (S.busy) return;
+  const cat = ($("cat-" + id) || {}).value || "";
+  S.busy = true; render();
+  try {
+    S.pend = (await api("putuskan", { id, keputusan: k, catatan: cat })).list;
+    toast(k === "DISETUJUI" ? "Disetujui" : "Ditolak");
+    refresh(true);
+  } catch (e) { toast(e.message, true); }
+  S.busy = false; render();
+}
+
+// ── TIMER & POLLING ───────────────────────────────────────────
+function tick() {
+  if (!S.st) return;
+  const b = S.st.istirahat;
+  document.querySelectorAll("[data-tick]").forEach(el => {
+    const k = el.dataset.tick;
+    if (k === "brk" && b.startTs) el.textContent = mmss(now() - b.startTs);
+    if (k === "brkbar" && b.startTs) {
+      const pct = Math.min(100, (now() - b.startTs) / (S.st.cfg.durasi * 600));
+      el.style.width = pct + "%"; el.style.background = now() > b.batasTs ? "#A3261B" : "";
+    }
+    if (k === "ot" || k === "since") el.textContent = (k === "since" ? Math.floor((now() - Number(el.dataset.start)) / 60000) + " m" : mmss(now() - Number(el.dataset.start)));
+  });
+}
+setInterval(tick, 1000);
+setInterval(() => { if (S.me && document.visibilityState === "visible" && !S.busy && S.view === "home") refresh(true); }, 30000);
+setInterval(() => { if (S.me && document.visibilityState === "visible") getPos().then(soft, soft); }, 60000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.me) { refresh(true); getPos().then(soft, soft); } });
+
+async function boot() {
+  S.me = load("tr_me");
+  if (S.me) { await refresh(); getPos().then(render, render); return; }
+  render();
+  try { S.staff = await api("staffList"); } catch (e) { toast(e.message, true); }
+  render();
+}
+boot();
+</script>
+</body>
+</html>
