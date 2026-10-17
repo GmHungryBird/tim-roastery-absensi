@@ -349,11 +349,14 @@ function cutiView() {
       <div><label for="cs">Sampai</label><input id="cs" class="f" type="date" min="${todayStr()}" value="${todayStr(1)}" onchange="hitungCuti()"></div></div>
     <div id="cn" class="muted"></div>
     <div><label for="ca">Alasan</label><textarea id="ca" class="f" rows="3" placeholder="Contoh: acara keluarga"></textarea></div>
+    <div><label for="cb">Sudah dikonsultasikan dengan siapa?</label><select id="cb" class="f">
+      <option value="">— Pilih —</option><option>Supervisor</option><option>Manager</option><option>Belum</option></select></div>
     <button class="btn" ${S.busy ? "disabled" : ""}>${S.busy ? "Mengirim…" : "Kirim Pengajuan"}</button>
   </form>`;
 }
 function kirimCuti() {
-  const q = { dari: $("cd").value, sampai: $("cs").value, alasan: $("ca").value };
+  const q = { dari: $("cd").value, sampai: $("cs").value, alasan: $("ca").value, atasan: $("cb").value };
+  if (!q.atasan) return toast("Pilih sudah dikonsultasikan dengan siapa.", true);
   run(async () => { const r = await api("ajukanCuti", q); S.view = "home"; return r; }, "Pengajuan cuti terkirim");
 }
 
