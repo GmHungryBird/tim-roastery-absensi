@@ -65,10 +65,11 @@ textarea.f{resize:none}
 // ============================================================
 const API_URL = "https://script.google.com/macros/s/AKfycbw-MU7lpVEWajpRoP6r1VGZxl-PtEOk2BhOe1F_g53aQuWoUhhl7SjmZeum_DrFIk5E/exec";
 
-const S = { me: null, st: null, view: "home", pos: null, posErr: "", offset: 0, staff: [], pend: null, busy: false };
+const S = { me: null, st: null, view: "home", pos: null, posErr: "", offset: 0, staff: [], pend: null, busy: false, abs: null };
 const ICON = {
   cup: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0522D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="2" y1="2" x2="22" y2="22"/></svg>',
   clock: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0522D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>',
+  users: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0522D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   cal: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A0522D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
 };
 
@@ -168,7 +169,7 @@ async function refresh(silent) {
   }
   catch (e) { if (/PIN salah/.test(e.message)) return logout(); if (!silent) toast(e.message, true); }
 }
-function go(v) { S.view = v; window.scrollTo(0, 0); render(); if (v === "approve") loadPending(); }
+function go(v) { S.view = v; window.scrollTo(0, 0); render(); if (v === "approve") loadPending(); if (v === "absensi") loadAbsensi(); }
 async function loadPending() {
   S.pend = null; render();
   try { S.pend = (await api("pending")).list; } catch (e) { toast(e.message, true); S.pend = []; }
@@ -182,7 +183,7 @@ function render() {
   if (!S.me) return app.innerHTML = loginView();
   if (!S.st) return app.innerHTML = '<main><p class="muted center">Memuat…</p></main>';
   const p = S.st.profil, loc = lokasiInfo();
-  const body = { home: homeView, ti: tiView, lembur: lemburView, cuti: cutiView, approve: approveView }[S.view]();
+  const body = { home: homeView, ti: tiView, lembur: lemburView, cuti: cutiView, approve: approveView, absensi: absensiView }[S.view]();
   app.innerHTML = `
   <header>
     <div class="row"><span class="brand">TIM ROASTERY</span><span class="sub">${esc(S.st.tanggalLabel)}</span></div>
@@ -224,8 +225,9 @@ function homeView() {
   if (p.istirahat || p.peran !== "STAF") out.push(sedangCard());
   out.push(`<div class="tiles">
     ${p.istirahat ? `<button class="tile" onclick="go('ti')">${ICON.cup}<span>Tidak Istirahat</span></button>` : ""}
-    <button class="tile" onclick="go('lembur')">${ICON.clock}<span>Lembur</span></button>
+    ${p.lembur !== false ? `<button class="tile" onclick="go('lembur')">${ICON.clock}<span>Lembur</span></button>` : ""}
     <button class="tile" onclick="go('cuti')">${ICON.cal}<span>Cuti</span></button>
+    ${p.bisaAbsensi ? `<button class="tile" onclick="go('absensi')">${ICON.users}<span>Absensi Tim</span></button>` : ""}
   </div>`);
   out.push(pengajuanCard());
   const b = st.bulanIni;
@@ -245,7 +247,8 @@ function istirahatCard() {
   if (b.state === "idle") {
     if (ti && ti.status === "DISETUJUI") inner += `<div class="okt" style="font-size:14px">Tidak istirahat hari ini sudah disetujui.</div>`;
     else if (ti) inner += `<div class="muted">Pengajuan tidak istirahat hari ini: <b class="warnt">menunggu persetujuan</b>.</div>`;
-    else inner += `<div class="muted">Tekan saat kamu benar-benar berhenti kerja. Jatah ${st.cfg.durasi} menit.</div>`;
+    else if (st.lewatDeadlineTI) inner += `<div class="note" style="color:var(--bad);background:#FBEAEA"><b>Kamu belum mencatat istirahat hari ini.</b> Kalau sampai jam pulang (${esc(st.profil.pulang)}) tidak tercatat, dihitung pelanggaran dan memotong Bonus Disiplin.</div>`;
+    else inner += `<div class="muted">Tekan saat kamu benar-benar berhenti kerja. Jatah ${st.cfg.durasi} menit. Lupa mencatat = pelanggaran.</div>`;
     if (ti) inner += `<div class="note">Kalau kamu mulai istirahat, pengajuan tidak istirahat hari ini otomatis batal.</div>`;
     inner += `<button class="btn" ${S.busy ? "disabled" : ""} onclick="geoAction('mulaiIstirahat','Istirahat dimulai')">${S.busy ? "Mengecek lokasi…" : "Mulai Istirahat"}</button>`;
   } else if (b.state === "running") {
@@ -254,10 +257,14 @@ function istirahatCard() {
       <div class="bar"><i data-tick="brkbar" style="width:0%"></i></div>
       <div class="muted center small">Mulai ${esc(b.mulai)} di ${esc(b.lokasi)} · kembali sebelum <b>${hm(b.batasTs)}</b></div>
       <button class="btn copper" ${S.busy ? "disabled" : ""} onclick="geoAction('selesaiIstirahat','Istirahat selesai')">${S.busy ? "Mengecek lokasi…" : "Selesai Istirahat"}</button>`;
+  } else if (b.state === "missed") {
+    badge = ["Tidak tercatat", "badt"];
+    inner += `<div class="badt" style="font-size:14px">Istirahat hari ini tidak tercatat dan dihitung pelanggaran.</div>`;
   } else {
     badge = b.telat ? ["Telat", "badt"] : ["Selesai", "okt"];
     inner += `<div style="font-weight:600">Istirahat ${esc(b.mulai)} – ${esc(b.selesai)} · ${b.durasi} menit</div>
-      <div class="${b.telat ? "badt" : "okt"}" style="font-size:13px">${b.telat ? "Tercatat telat istirahat." : "Tepat waktu."}</div>`;
+      <div class="${b.telat ? "badt" : "okt"}" style="font-size:13px">${b.telat ? "Tercatat telat istirahat." : "Tepat waktu."}</div>
+      ${b.catatan ? `<div class="muted small">${esc(b.catatan)}</div>` : ""}`;
   }
   return `<section class="card"><div class="row"><h2>ISTIRAHAT HARI INI</h2><span class="small ${badge[1]}" style="font-weight:600">${badge[0]}</span></div>${inner}</section>`;
 }
@@ -278,7 +285,8 @@ function sedangCard() {
   const st = S.st;
   const rows = st.sedangIstirahat.map(x => `<div class="it">
       <span style="font-weight:${x.saya ? 700 : 500}">${x.saya ? "Kamu" : esc(x.nama)}</span>
-      <span class="mono ${x.lewat ? "badt" : "muted"}" style="font-weight:600">${x.lewat ? "lewat waktu · " : "sejak " + esc(x.mulai) + " · "}<span data-tick="since" data-start="${x.startTs}"></span></span>
+      <span style="display:flex;align-items:center;gap:8px"><span class="mono ${x.lewat ? "badt" : "muted"}" style="font-weight:600">${x.lewat ? "lewat waktu · " : "sejak " + esc(x.mulai) + " · "}<span data-tick="since" data-start="${x.startTs}"></span></span>
+      ${st.profil.peran !== "STAF" && !x.saya ? `<button class="link" style="padding:4px 0" onclick="koreksi('${esc(x.nama)}','${esc(x.mulai)}')">Tutup</button>` : ""}</span>
     </div>`).join("") || `<div class="muted small">Tidak ada yang sedang istirahat.</div>`;
   const nm = a => a.map(n => esc(n.split(" ")[0][0] + n.split(" ")[0].slice(1).toLowerCase())).join(", ") || "—";
   return `<section class="card" style="gap:6px"><div class="row"><h2>SEDANG ISTIRAHAT</h2><span class="small muted">${st.sedangIstirahat.length} dari ${st.jumlahWajib} orang</span></div>
@@ -297,6 +305,14 @@ function pengajuanCard() {
       ${r.status === "MENUNGGU" ? `<button class="link" onclick="batal('${esc(r.id)}')">Batalkan</button>` : ""}</div></div>`;
   }).join("") || `<div class="muted small">Belum ada pengajuan.</div>`;
   return `<section class="card" style="gap:6px"><h2>PENGAJUAN SAYA</h2><div class="list">${rows}</div></section>`;
+}
+function koreksi(nama, mulai) {
+  const d = new Date(now());
+  const jam = prompt("Tutup istirahat " + nama + " (mulai " + mulai + ").\nJam selesai yang sebenarnya (contoh 13:05):", pad(d.getHours()) + ":" + pad(d.getMinutes()));
+  if (!jam) return;
+  const alasan = prompt("Alasan koreksi (mis. lupa tekan Selesai, sudah kembali kerja jam " + jam + "):");
+  if (!alasan) return toast("Alasan wajib diisi.", true);
+  run(() => api("koreksiSelesai", { nama_staf: nama, jam: jam.replace(".", ":"), alasan }), "Istirahat " + nama + " ditutup");
 }
 function batal(id) { if (confirm("Batalkan pengajuan ini?")) run(() => api("batalkan", { id }), "Pengajuan dibatalkan"); }
 
@@ -365,6 +381,51 @@ function kirimCuti() {
   const q = { dari: $("cd").value, sampai: $("cs").value, alasan: $("ca").value, atasan: $("cb").value };
   if (!q.atasan) return toast("Pilih sudah dikonsultasikan dengan siapa.", true);
   run(async () => { const r = await api("ajukanCuti", q); S.view = "home"; return r; }, "Pengajuan cuti terkirim");
+}
+
+// ── ABSENSI TIM (Supervisor / Manager / Admin) ────────────────
+const KODE = [["M", "Masuk"], ["S", "Sakit"], ["I", "Ijin"], ["A", "Alpha"], ["AL", "Cuti"], ["OFF", "Libur"]];
+const kodeLabel = k => (KODE.find(x => x[0] === k) || [k, k || "—"])[1];
+async function loadAbsensi(tgl) {
+  S.absTgl = tgl || S.absTgl || todayStr();
+  const minta = S.absTgl;
+  S.abs = null; render();
+  try {
+    const r = await api("absensiHari", { tanggal: minta });
+    if (minta !== S.absTgl) return;            // sudah ganti tanggal lagi, abaikan hasil lama
+    S.abs = r;
+  } catch (e) { toast(e.message, true); S.abs = { list: [], tanggal: minta }; }
+  render();
+}
+function absensiView() {
+  const a = S.abs;
+  const head = `<section class="card" style="gap:10px"><h3>Absensi Tim</h3>
+    <div class="muted small">Ubah kode hari itu (mis. sakit, ijin, alpha). Langsung tersimpan ke tab Shift dan tercatat di Log Absensi.</div>
+    <div><label for="abt">Tanggal</label><input id="abt" class="f" type="date" value="${esc(S.absTgl || todayStr())}"
+      ${a && a.mulai ? `min="${esc(a.mulai)}" max="${esc(a.selesai)}"` : ""} onchange="loadAbsensi(this.value)"></div></section>`;
+  if (!a) return head + `<p class="muted center">Memuat…</p>`;
+  const rows = a.list.map((r, i) => {
+    const nm = r.nama.split(" ").map(w => w[0] + w.slice(1).toLowerCase()).join(" ");
+    const opts = KODE.map(k => `<option value="${k[0]}" ${k[0] === r.kode ? "selected" : ""}>${k[1]}</option>`).join("");
+    const warna = { S: "warnt", I: "warnt", A: "badt", AL: "", OFF: "muted" }[r.kode] || "";
+    return `<div class="it" style="align-items:center">
+      <div style="min-width:0"><div style="font-weight:600;font-size:14px" class="${warna}">${esc(nm)}</div><div class="muted small">${esc(r.jabatan)}</div></div>
+      ${r.bisa ? `<select class="f" style="width:120px;min-height:40px;padding:8px" aria-label="Kode absensi ${esc(nm)}" onchange="ubahAbs(${i}, this)">${opts}</select>`
+               : `<span class="muted small">${esc(kodeLabel(r.kode))} (kamu)</span>`}
+    </div>`;
+  }).join("");
+  return head + `<section class="card" style="gap:4px"><div class="row"><h2>${esc(a.label || "")}</h2><span class="small muted">${a.list.length} orang</span></div>
+    <div class="list">${rows}</div></section>`;
+}
+async function ubahAbs(i, el) {
+  if (!S.abs || S.abs.tanggal !== S.absTgl) return toast("Tunggu data tanggal ini selesai dimuat.", true);
+  const r = S.abs.list[i], ke = el.value;
+  const cat = prompt(r.nama + " · " + S.abs.label + "\n" + kodeLabel(r.kode) + " → " + kodeLabel(ke) + "\n\nCatatan (opsional, mis. ada surat dokter):", "");
+  if (cat === null) { el.value = r.kode; return; }
+  el.disabled = true;
+  try { S.abs = await api("ubahAbsensi", { nama_staf: r.nama, tanggal: S.abs.tanggal, kode: ke, catatan: cat }); toast("Tersimpan: " + kodeLabel(ke)); }
+  catch (e) { toast(e.message, true); el.value = r.kode; }
+  el.disabled = false; render();
 }
 
 // ── PERSETUJUAN ───────────────────────────────────────────────
