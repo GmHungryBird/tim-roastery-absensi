@@ -283,7 +283,8 @@ function sedangCard() {
   const nm = a => a.map(n => esc(n.split(" ")[0][0] + n.split(" ")[0].slice(1).toLowerCase())).join(", ") || "—";
   return `<section class="card" style="gap:6px"><div class="row"><h2>SEDANG ISTIRAHAT</h2><span class="small muted">${st.sedangIstirahat.length} dari ${st.jumlahWajib} orang</span></div>
     <div class="list">${rows}</div>
-    <div class="muted small" style="margin-top:4px">Sudah: ${nm(st.sudahIstirahat)} · Belum: ${nm(st.belumIstirahat)}</div></section>`;
+    <div class="muted small" style="margin-top:4px">Sudah: ${nm(st.sudahIstirahat)} · Belum: ${nm(st.belumIstirahat)}</div>
+    ${(st.tidakIstirahatHariIni || []).length ? `<div class="small" style="margin-top:2px;color:var(--warn)"><b>Tidak istirahat:</b> ${st.tidakIstirahatHariIni.map(x => nm([x.nama]) + (x.status === "DISETUJUI" ? " (disetujui)" : " (menunggu)")).join(", ")}</div>` : ""}</section>`;
 }
 
 function pengajuanCard() {
