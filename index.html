@@ -152,14 +152,20 @@ async function run(fn, okMsg) {
 }
 // Pembaruan latar belakang: beranda dirender ulang, form cukup perbarui indikator lokasi.
 function soft() {
-  if (!isForm()) return render();
+  const ae = document.activeElement;
+  const mengetik = ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName);
+  if (!isForm() && !mengetik) return render();
   const c = document.querySelector(".chip"), l = lokasiInfo();
   if (c) { c.className = "chip " + l.cls; c.lastElementChild.textContent = l.text; }
 }
 const geoAction = (action, okMsg) => run(async () => { const p = await getPos(); return api(action, { lat: p.lat, lng: p.lng, acc: Math.round(p.acc) }); }, okMsg);
 
 async function refresh(silent) {
-  try { S.st = await api("status"); soft(); }
+  try {
+    S.st = await api("status");
+    if (S.st.profil.peran !== "STAF") { try { S.pend = (await api("pending")).list; } catch (e) {} }
+    soft();
+  }
   catch (e) { if (/PIN salah/.test(e.message)) return logout(); if (!silent) toast(e.message, true); }
 }
 function go(v) { S.view = v; window.scrollTo(0, 0); render(); if (v === "approve") loadPending(); }
@@ -212,6 +218,7 @@ async function doLogin() {
 function homeView() {
   const st = S.st, p = st.profil, out = [];
   if (st.libur) out.push(`<div class="note">${{ OFF: "Hari ini jadwal libur kamu.", AL: "Hari ini kamu cuti.", S: "Hari ini tercatat sakit.", I: "Hari ini tercatat ijin." }[st.kodeHari] || "Hari ini kamu tidak dijadwalkan masuk."}</div>`);
+  if (p.peran !== "STAF") out.push(pendingSection());
   if (p.istirahat) out.push(istirahatCard());
   if (st.lembur) out.push(lemburCard());
   if (p.istirahat || p.peran !== "STAF") out.push(sedangCard());
@@ -220,7 +227,6 @@ function homeView() {
     <button class="tile" onclick="go('lembur')">${ICON.clock}<span>Lembur</span></button>
     <button class="tile" onclick="go('cuti')">${ICON.cal}<span>Cuti</span></button>
   </div>`);
-  if (p.peran !== "STAF") out.push(`<button class="btn ghost" onclick="go('approve')">Persetujuan${st.jumlahMenunggu ? `<span class="badge">${st.jumlahMenunggu}</span>` : ""}</button>`);
   out.push(pengajuanCard());
   const b = st.bulanIni;
   out.push(`<section class="card"><div class="row"><h2>PERIODE INI</h2><span class="small muted">${esc(st.periodeLabel)}</span></div><div class="grid2">
@@ -361,9 +367,19 @@ function kirimCuti() {
 }
 
 // ── PERSETUJUAN ───────────────────────────────────────────────
+function pendingSection() {
+  const n = S.pend ? S.pend.length : S.st.jumlahMenunggu;
+  const head = `<div class="row" style="padding:0 2px"><h2>MENUNGGU PERSETUJUAN</h2>${n ? `<span class="badge">${n}</span>` : ""}</div>`;
+  if (!S.pend) return head + `<p class="muted small" style="margin:0">Memuat pengajuan…</p>`;
+  if (!S.pend.length) return head + `<section class="card" style="padding:12px 18px"><div class="muted small">Tidak ada pengajuan yang menunggu.</div></section>`;
+  return head + approveCards();
+}
 function approveView() {
   if (!S.pend) return `<p class="muted center">Memuat pengajuan…</p>`;
   if (!S.pend.length) return `<section class="card"><h3>Persetujuan</h3><div class="muted">Tidak ada pengajuan yang menunggu.</div></section>`;
+  return approveCards();
+}
+function approveCards() {
   return S.pend.map(it => `<article class="card" style="gap:10px">
     <div class="row" style="align-items:flex-start"><div><div class="small" style="font-weight:700;letter-spacing:1px;color:var(--copper)">${esc((JENIS[it.jenis] || it.jenis).toUpperCase())}</div>
       <div style="font-size:16px;font-weight:700">${esc(it.nama)}</div></div><span class="small muted">${esc(it.dikirim)}</span></div>
